@@ -2,6 +2,7 @@ package com.mkm.http.client.app;
 
 import com.mkm.http.client.domain.MyModel;
 import com.mkm.http.client.domain.MyModelOne;
+import com.mkm.http.client.domain.MyModelTwo;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
@@ -62,8 +63,10 @@ public class Server {
 }
 
 class JsonServerHandler extends ChannelInboundHandlerAdapter { // (1)
-    private MyModel myModel = new MyModelOne("one", 1);
-    private String jsonPayload = Json.stringify(Json.toJson(myModel));
+    private MyModelOne myModel1 = new MyModelOne("one", 1);
+    private MyModelTwo myModel2 = new MyModelTwo("two",2,256.33);
+    private String jsonPayload1 = Json.stringify(Json.toJson(myModel1));
+    private String jsonPayload2 = Json.stringify(Json.toJson(myModel2));
 
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) {
@@ -75,19 +78,14 @@ class JsonServerHandler extends ChannelInboundHandlerAdapter { // (1)
         if (msg instanceof HttpRequest) {
             HttpRequest req = (HttpRequest) msg;
 
-            if (req.getUri().contains("notFound")) {
-                FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, NOT_FOUND, Unpooled.copiedBuffer("Failure: " + NOT_FOUND + "\r\n", CharsetUtil.UTF_8));
-                response.headers().set(CONTENT_TYPE, "text/plain; charset=UTF-8");
-                response.headers().set(CONTENT_LENGTH, response.content().readableBytes());
-                ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
-            } else {
+            if (req.getUri().endsWith(MyModelOne.class.getSimpleName())) {
 
                 if (HttpHeaders.is100ContinueExpected(req)) {
                     ctx.write(new DefaultFullHttpResponse(HTTP_1_1, CONTINUE));
                 }
 
                 boolean keepAlive = HttpHeaders.isKeepAlive(req);
-                FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, OK, Unpooled.wrappedBuffer(jsonPayload.getBytes()));
+                FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, OK, Unpooled.wrappedBuffer(jsonPayload1.getBytes()));
                 response.headers().set(CONTENT_TYPE, "application/json");
                 response.headers().set(CONTENT_LENGTH, response.content().readableBytes());
 
@@ -97,6 +95,28 @@ class JsonServerHandler extends ChannelInboundHandlerAdapter { // (1)
                     response.headers().set(CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
                     ctx.write(response);
                 }
+            } else if (req.getUri().endsWith(MyModelTwo.class.getSimpleName())) {
+
+                if (HttpHeaders.is100ContinueExpected(req)) {
+                    ctx.write(new DefaultFullHttpResponse(HTTP_1_1, CONTINUE));
+                }
+
+                boolean keepAlive = HttpHeaders.isKeepAlive(req);
+                FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, OK, Unpooled.wrappedBuffer(jsonPayload2.getBytes()));
+                response.headers().set(CONTENT_TYPE, "application/json");
+                response.headers().set(CONTENT_LENGTH, response.content().readableBytes());
+
+                if (!keepAlive) {
+                    ctx.write(response).addListener(ChannelFutureListener.CLOSE);
+                } else {
+                    response.headers().set(CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
+                    ctx.write(response);
+                }
+            } else {
+                FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, NOT_FOUND, Unpooled.copiedBuffer("Failure: " + NOT_FOUND + "\r\n", CharsetUtil.UTF_8));
+                response.headers().set(CONTENT_TYPE, "text/plain; charset=UTF-8");
+                response.headers().set(CONTENT_LENGTH, response.content().readableBytes());
+                ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
             }
         }
     }
