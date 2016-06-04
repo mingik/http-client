@@ -4,13 +4,15 @@ import com.mkm.http.client.domain.MyModel;
 import com.mkm.http.client.domain.MyModelOne;
 import com.mkm.http.client.domain.MyModelTwo;
 import com.mkm.http.client.exception.HttpClientException;
+import com.mkm.http.client.app.*;
 import junit.framework.Assert;
 import junit.framework.TestCase;
-import org.junit.Test;
+import org.junit.*;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -24,6 +26,19 @@ import static junit.framework.TestCase.assertTrue;
  * Created by mintik on 5/25/16.
  */
 public class HttpClientTest {
+    @BeforeClass
+    public static void onlyOnce() {
+	// Run Server in the background...
+	CompletableFuture.runAsync(() -> {
+		try {
+		    Server.main(new String[]{});
+		} catch (Exception e) {
+		    e.printStackTrace();
+		    fail("Couldn't start the Server");
+		};
+	    }, Executors.newFixedThreadPool(1));
+    }
+
     @Test
     public void testClientNoConnection() throws InterruptedException {
         HttpClient httpClient = new HttpClient();
